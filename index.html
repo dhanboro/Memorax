@@ -151,6 +151,17 @@ header .header-right {
   header .header-right { flex-wrap: wrap; justify-content: flex-end; }
 }
 
+#emailBadge{
+  max-width: 45vw;           /* don’t let it push the row */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* a bit tighter on very narrow phones */
+@media (max-width: 420px){
+  #emailBadge{ font-size: 11px; padding: 3px 6px; max-width: 52vw; }
+}
 
   </style>
 </head>
@@ -648,6 +659,17 @@ setupAboutAccordions();
     border: '1px solid #c7d2fe',
     verticalAlign: 'middle'
   });
+	// Keep email pill + buttons in one row on small screens
+const btnParent = (logoutBtn || loginBtn)?.parentElement;
+if (btnParent) {
+  Object.assign(btnParent.style, {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    flexWrap: 'nowrap'
+  });
+}
+
   // place before Logout (or before Login if Logout not present yet)
   if (logoutBtn) {
     logoutBtn.insertAdjacentElement('beforebegin', emailBadge);
@@ -907,6 +929,7 @@ setupAboutAccordions();
 
 </body>
 </html>
+
 
 
 
