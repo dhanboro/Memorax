@@ -633,6 +633,28 @@ setupAboutAccordions();
   const loginBtn  = document.getElementById("loginBtn");
   const logoutBtn = document.getElementById("logoutBtn");
 
+  // --- Email badge (added) ---
+  const emailBadge = document.createElement('span');
+  emailBadge.id = 'emailBadge';
+  emailBadge.textContent = '';
+  Object.assign(emailBadge.style, {
+    display: 'none',
+    padding: '4px 8px',
+    marginRight: '8px',
+    borderRadius: '999px',
+    fontSize: '12px',
+    background: '#eef2ff',
+    color: '#1e293b',
+    border: '1px solid #c7d2fe',
+    verticalAlign: 'middle'
+  });
+  // place before Logout (or before Login if Logout not present yet)
+  if (logoutBtn) {
+    logoutBtn.insertAdjacentElement('beforebegin', emailBadge);
+  } else if (loginBtn) {
+    loginBtn.insertAdjacentElement('beforebegin', emailBadge);
+  }
+
   // ---------- Full-screen "Sign in required" gate (visible by default) ----------
   const gate = document.createElement("div");
   gate.id = "authGate";
@@ -844,6 +866,10 @@ setupAboutAccordions();
       if (logoutBtn) logoutBtn.style.display = "";
       gate.style.display = "none";
 
+      // show email badge (added)
+      emailBadge.textContent = user.email || 'Signed in';
+      emailBadge.style.display = 'inline-flex';
+
       await touchLastSeen(user);
 
       const meta = JSON.parse(localStorage.getItem(META_KEY) || "{}");
@@ -869,16 +895,19 @@ setupAboutAccordions();
       if (logoutBtn) logoutBtn.style.display = "none";
       gate.style.display = "flex";
 
+      // hide email badge (added)
+      emailBadge.style.display = 'none';
+      emailBadge.textContent = '';
+
       localStorage.removeItem(STORE_KEY);
       localStorage.removeItem(META_KEY);
     }
   });
 </script>
 
-
-
 </body>
 </html>
+
 
 
 
