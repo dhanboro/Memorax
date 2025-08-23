@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Memorax</title>
+  <style>
+    :root{
+      --bg:#0b0f14; --panel:#111824; --muted:#6b7a90; --text:#e6eef8; --accent:#7cc4ff; --accent2:#b5f59f;
+      --danger:#ff6b6b; --ok:#79ffa1; --warn:#ffd27a; --card:#0f1520; --border:#1f2b3a;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif}
+    a{color:var(--accent)}
+    .wrap{max-width:1100px;margin:0 auto;padding:18px}
+    header{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:12px}
+    header h1{font-size:20px;margin:0;font-weight:700;letter-spacing:.3px}
+    .today{color:var(--muted);font-size:14px}
+    .cards{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+    .card{grid-column:span 12;background:var(--panel);border:1px solid var(--border);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+    @media(min-width:900px){.card.span6{grid-column:span 6}}
+    .card header{padding:12px 14px;border-bottom:1px solid var(--border)}
+    .card header h2{margin:0;font-size:16px}
+    .card .body{padding:14px}
+    textarea,input,select,button{background:#0b1220;color:var(--text);border:1px solid var(--border);border-radius:10px;padding:10px;font:inherit}
+    textarea{width:100%;min-height:96px;resize:vertical}
+    button{cursor:pointer}
+    button.primary{background:linear-gradient(180deg,#12253a,#0e1c2d);border-color:#1e3350}
+    button.success{background:linear-gradient(180deg,#14331f,#0f2617);border-color:#204830}
+    button.danger{background:linear-gradient(180deg,#3a1212,#2a0f0f);border-color:#4f1e1e}
+    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .muted{color:var(--muted)}
+    .pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--border);border-radius:999px;font-size:12px;background:var(--card)}
+    .list{display:flex;flex-direction:column;gap:10px}
+    .rev-session{border:1px dashed var(--border);border-radius:12px;padding:10px;background:var(--card)}
+    .rev-session header{display:flex;gap:8px;align-items:center;justify-content:space-between;border:none;padding:0;margin:0 0 6px 0}
+    .rev-session .due-days{display:flex;flex-wrap:wrap;gap:8px}
+    .rev-session .due-days .pill{background:#0e1826}
+    .rev-session.pending{outline:1px solid #2a3b55}
+    .rev-session.done{opacity:.6}
+    .table{width:100%;border-collapse:separate;border-spacing:0 8px}
+    .tr{display:grid;grid-template-columns:120px 1fr 120px;gap:10px;align-items:center;background:var(--card);border:1px solid var(--border);padding:10px;border-radius:12px}
+    .tr textarea{min-width:225px;max-width:250px;width:240px}
+    .tr .daynum{font-weight:700}
+    .small{font-size:12px}
+    .right{margin-left:auto}
+    .kbd{font-family:ui-monospace,Menlo,Consolas,monospace;background:#0d1422;border:1px solid var(--border);padding:2px 6px;border-radius:6px}
+    .footer{margin-top:10px;font-size:12px;color:var(--muted)}
+    .grid2{display:grid;grid-template-columns:1fr 150px;gap:10px}
+    .spacer{height:8px}
+    .today { display: none; }
+	.credit{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12px;margin:6px 2px 10px}
+.credit a{display:inline-flex}
+.credit svg{width:18px;height:18px}
+.credit a:hover{color:var(--accent)}
+/* Adds breathing room so the button's border doesn't touch the pills */
+.rev-session .row { margin-bottom: 10px; }
+.rev-session .due-days { margin-top: 2px; } /* optional */
+
+
+
+
+.sep{border:0;border-top:1px solid var(--border);margin:12px 0}
+.about h3{font-size:14px;margin:10px 0 6px}
+.about p,.about li{font-size:13px;color:var(--muted);line-height:1.5}
+.about ul,.about ol{margin:6px 0 10px 18px}
+
+
+
+/* Mobile card order + small-screen tweaks */
+@media (max-width: 899px) {
+  /* Keep cards stacked full-width */
+  .cards { grid-template-columns: 1fr; }
+  .cards .card { grid-column: 1 / -1; }
+
+  /* Reorder:
+     1) Due Revisions
+     2) Today’s Record
+     3) Previous Records
+     4) Settings
+   */
+  .cards .card:nth-of-type(1) { grid-row: 2; } /* Today’s Record */
+  .cards .card:nth-of-type(2) { grid-row: 1; } /* Due Revisions */
+  .cards .card:nth-of-type(3) { grid-row: 3; } /* Previous Records */
+  .cards .card:nth-of-type(4) { grid-row: 4; } /* Settings */
+
+  /* Make forms comfy on phones */
+  .tr { grid-template-columns: 1fr; }      /* stack Day/textarea/Save */
+  .tr textarea { width: 100%; max-width: 100%; }
+  .grid2 { grid-template-columns: 1fr; }   /* Settings inputs stack */
+  .row { gap: 8px; flex-wrap: wrap; }
+  textarea, input, select, button { font-size: 16px; } /* avoid iOS zoom */
+  .wrap { padding: 12px; }
+
+:root{
+      --bg:#47a686; --muted:#ffffff; --accent:#ffffff;
+    }
+}
+
+/* ——— About: Mobile-only accordions ——— */
+.about .accordion { /* desktop defaults */
+  border: none;
+  background: transparent;
+  border-radius: 12px;
+}
+.about .accordion .acc-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0; cursor: default; user-select: none;
+}
+.about .accordion .acc-head h3 { margin: 0; font-size: 14px; }
+.about .accordion .acc-head .chev { display: none; }
+.about .accordion .acc-body { max-height: none; overflow: visible; padding: 0; }
+
+/* Mobile only */
+@media (max-width: 899px) {
+  .about .accordion {
+    border: 1px solid var(--border);
+    background: var(--card);
+    padding: 0; /* head/body handle their own padding */
+  }
+  .about .accordion + .accordion { margin-top: 10px; }
+
+  .about .accordion .acc-head {
+    padding: 12px 14px; cursor: pointer;
+  }
+  .about .accordion .acc-head .chev {
+    display: inline-flex; width: 18px; height: 18px; opacity: .8;
+    transition: transform .2s ease;
+  }
+  .about .accordion.open .acc-head .chev { transform: rotate(180deg); }
+
+  .about .accordion .acc-body {
+    max-height: 0; overflow: hidden;
+    padding: 0 14px;
+    transition: max-height .25s ease;
+  }
+  .about .accordion.open .acc-body {
+    /* padding-bottom is applied via JS when opened for smoother feel */
+  }
+
+  /* tighten list typography a touch on mobile */
+  .about ol, .about ul { margin: 8px 0 12px 18px; }
+}
+
+header .header-right {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+@media (max-width: 480px) {
+  header .header-right { flex-wrap: wrap; justify-content: flex-end; }
+}
+
+
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+  <h1>Memorax</h1>
+
+  <!-- Right side: auth controls (no public analytics) -->
+  <div class="header-right">
+    <div class="today" id="todayStr"></div>
+    <button id="loginBtn" class="primary">Sign in</button>
+    <button id="logoutBtn" style="display:none">Sign out</button>
+  </div>
+</header>
+
+
+	<div class="credit">
+  <span>Created by Dhan Boro • Aug, 2025. Follow me on</span>
+  <a href="https://instagram.com/dhan_boro07/" target="_blank" rel="noopener" aria-label="Instagram">
+    <!-- inline IG logo -->
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3H7zm5 3.5A5.5 5.5 0 1 1 6.5 13 5.5 5.5 0 0 1 12 7.5zm0 2A3.5 3.5 0 1 0 15.5 13 3.5 3.5 0 0 0 12 9.5zM18 6.75a1.25 1.25 0 1 1-1.25 1.25A1.25 1.25 0 0 1 18 6.75z"/>
+    </svg>
+  </a>
+</div>
+
+
+    <div class="cards">
+      <section class="card span6">
+        <header><h2>Today’s Record</h2></header>
+        <div class="body">
+          <div class="row small muted">Day <span id="todayDayNum">—</span> • <span id="todayDateStr">—</span></div>
+          <div class="spacer"></div>
+          <textarea id="todayText" placeholder="What did you study today? (free text, multiple chapters allowed)"></textarea>
+          <div class="spacer"></div>
+          <div class="row">
+            <button class="primary" id="saveTodayBtn">Save Today’s Record</button>
+            <span class="right small muted" id="autosaveNote"></span>
+          </div>
+        </div>
+      </section>
+
+      <section class="card span6">
+        <header><h2>Due Revisions</h2></header>
+        <div class="body">
+          <div class="spacer"></div>
+          <div class="list" id="revList"></div>
+          <div class="spacer"></div>
+          <div class="row">
+            <button class="success" id="markAllVisibleBtn">Mark All Visible Sessions as Revised</button>
+            <button id="revViewAllBtn">View all</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card span6">
+        <header><h2>Previous Records</h2></header>
+        <div class="body">
+          <div class="spacer"></div>
+          <div id="daysTable"></div>
+          <div class="spacer"></div>
+          <div class="row" id="viewAllRow">
+            <button id="viewAllBtn">View all</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card span6">
+        <header><h2>Settings</h2></header>
+        <div class="body">
+          <div class="grid2">
+            <label>
+              <div class="small muted">Retention (days)</div>
+              <input type="number" id="retentionDays" min="20" max="365" step="1" />
+            </label>
+            <button id="applyRetentionBtn">Apply</button>
+          </div>
+          <div class="spacer"></div>
+          <div class="row">
+            <button class="danger" id="resetBtn">Reset All Data</button>
+          </div>
+<!-- about codes start here --> 
+	<hr class="sep">
+<section class="about">
+  <h3>About</h3>
+  <p><strong>Memorax</strong> is a simple daily tool that helps you remember what you learn. 
+     Each day you write a short note about what you memorized or practised. Memorax then tells you, on the right days, what to review.
+     Just write what you learn everyday and revise the Due Revisions.</p>
+  <p><em>What to write:</em> Things you memorized or practised or anything that requires revisions. <br>
+     <em>What not to write:</em> Things that you do only once and does not require revisions like writing notes.</p>
+
+  <h3>How it works</h3>
+  <ol>
+    <li><strong>Log once per day.</strong> Add a quick line about what you memorized or practised. If you did not memorize or practise anything then you can write "nothing". If you miss a day, Memorax fills it as “not logged by user” so your days stay in order.</li>
+    <li><strong>Smart timing.</strong> After you first learn something, Memorax brings it back at four key times: <strong>1, 3, 7, and 14 days</strong> later.</li>
+    <li><strong>One clear list.</strong> Each day you see exactly what to review — newest items first — plus any missed reviews, so nothing slips through the cracks.</li>
+    <li><strong>Quick finish.</strong> When you’re done, mark the whole day’s review as “Revised.” One click. No extra steps.</li>
+  </ol>
+
+  <h3>Why it’s effective</h3>
+  <ul>
+    <li><strong>Works with your brain, not against it.</strong> We forget fast right after learning. Short, well-timed reviews stop that slide before it gets steep. This is the classic <em><a href="https://www.google.com/search?q=spacing+effect" target="_blank">spacing effect</a></em>.</li>
+    <li><strong>Recall beats re-reading.</strong> Trying to pull the idea from memory (even briefly) strengthens it much more than skimming notes. That’s <em><a href="https://www.google.com/search?q=retrieval+practise" target="_blank">retrieval practice</a></em>.</li>
+    <li><strong>“Just hard enough.”</strong> Reviewing after a little delay feels slightly effortful — the good kind of struggle that makes learning stick (“<em><a href="https://www.google.com/search?q=desirable+difficulty" target="_blank">desirable difficulty</a></em>”).</li>
+    <li><strong>Protects what fades fastest.</strong> Newer material decays quickly, so Memorax puts it first. You stabilize the fresh stuff before it slips.</li>
+    <li><strong>Fewer decisions, stronger habit.</strong> A single daily list removes guesswork. Less friction → more consistency → better memory.</li>
+  </ul>
+</section>
+
+<!-- about codes end here -->
+        </div>
+      </section>
+    </div>
+  </div>
+
+<script>
+(function(){
+  'use strict';
+
+  // ====== Config ======
+  const SCHEDULE = [1,3,7,14];
+  const DEFAULT_RETENTION_DAYS = 60;
+  const STORE_KEY = 'sr_day_logger_v1';
+
+  // ====== Helpers ======
+  const toISO = d => new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())).toISOString().slice(0,10);
+  const fromISO = iso => { const [y,m,day]=iso.split('-').map(Number); return new Date(Date.UTC(y,m-1,day)); };
+  const addDays = (iso, n) => { const d = fromISO(iso); d.setUTCDate(d.getUTCDate()+n); return toISO(d); };
+  const diffDays = (aISO, bISO) => Math.round((fromISO(aISO)-fromISO(bISO))/(24*3600*1000));
+  const todayISO = () => toISO(new Date());
+  const formatHuman = iso => { const d = fromISO(iso); return d.toLocaleDateString(undefined,{weekday:'short',year:'numeric',month:'short',day:'numeric'}); };
+
+  // ====== Data Shape ======
+  // { originDate: 'YYYY-MM-DD', retentionDays: number, days: [{date, text, auto}], sessions: { [sessionISO]: { dueDays:number[], done:boolean, doneAt?:string } } }
+
+  function load(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw) {
+      const s = JSON.parse(raw);
+
+      // ---- SAFETY DEFAULTS (important when loading cloud data) ----
+      // originDate
+      if (!s.originDate) {
+        const earliest = (s.days && s.days.length) ? s.days[0].date : todayISO();
+        s.originDate = s.startDate || earliest || todayISO();
+      }
+
+      // days must be an array
+      if (!Array.isArray(s.days)) s.days = [];
+
+      // sessions must be an object (your UI logic expects this)
+      if (!s.sessions || typeof s.sessions !== "object") s.sessions = {};
+
+      // retentionDays must be a finite number
+      if (typeof s.retentionDays !== "number" || !Number.isFinite(s.retentionDays)) {
+        s.retentionDays = DEFAULT_RETENTION_DAYS; // your default is 60
+      }
+      // -------------------------------------------------------------
+
+      return s;
+    }
+  } catch (e) {
+    console.error("load error", e);
+  }
+  // brand new / nothing saved yet:
+  return { originDate: todayISO(), retentionDays: DEFAULT_RETENTION_DAYS, days: [], sessions: {} };
+}
+
+  function save(state){ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+
+  function ensureDayStubs(state){
+    if(!state.days.length){ state.days.push({date: state.originDate, text: 'not logged by user', auto: true}); }
+    let lastDate = state.days[state.days.length-1].date;
+    let today = todayISO();
+    while(diffDays(addDays(lastDate,1), today) <= 0){
+      const nextDate = addDays(lastDate,1);
+      if(nextDate > today) break;
+      state.days.push({date: nextDate, text: 'not logged by user', auto: true});
+      lastDate = nextDate;
+    }
+    const hasToday = state.days.some(d => d.date === today);
+    if(!hasToday){ state.days.push({date: today, text: 'not logged by user', auto: true}); }
+  }
+
+  function dayNumberForDate(state, iso){ return diffDays(iso, state.originDate) + 1; }
+  function dayISOFromNumber(state, n){ return addDays(state.originDate, n-1); }
+
+  function rebuildSessions(state){
+    const lastDate = state.days[state.days.length-1]?.date || state.originDate;
+    let cursor = state.days[0]?.date || state.originDate;
+    while(diffDays(cursor, lastDate) <= 0){
+      const N = dayNumberForDate(state, cursor);
+      const due = SCHEDULE.map(k => N - k).filter(n => n >= 1).sort((a,b)=>b-a);
+      if(due.length){
+        if(!state.sessions[cursor]) state.sessions[cursor] = {dueDays:[], done:false};
+        const set = new Set([...(state.sessions[cursor].dueDays||[]), ...due]);
+        state.sessions[cursor].dueDays = Array.from(set).sort((a,b)=>b-a);
+      }
+      cursor = addDays(cursor,1);
+    }
+    const cutoff = addDays(todayISO(), -state.retentionDays);
+    for(const k of Object.keys(state.sessions)){
+      if(k < cutoff){ delete state.sessions[k]; continue; }
+      state.sessions[k].dueDays = state.sessions[k].dueDays.filter(n => {
+        const iso = dayISOFromNumber(state, n);
+        return iso >= cutoff && state.days.some(d=>d.date===iso);
+      });
+      if(state.sessions[k].dueDays.length===0) delete state.sessions[k];
+    }
+  }
+
+  function pruneOld(state){
+    const cutoff = addDays(todayISO(), -state.retentionDays);
+    state.days = state.days.filter(d => d.date >= cutoff);
+  }
+
+  const els = {
+    todayStr: document.getElementById('todayStr'),
+    todayDayNum: document.getElementById('todayDayNum'),
+    todayDateStr: document.getElementById('todayDateStr'),
+    todayText: document.getElementById('todayText'),
+    saveTodayBtn: document.getElementById('saveTodayBtn'),
+    autosaveNote: document.getElementById('autosaveNote'),
+    revList: document.getElementById('revList'),
+    daysTable: document.getElementById('daysTable'),
+    retentionDays: document.getElementById('retentionDays'),
+    applyRetentionBtn: document.getElementById('applyRetentionBtn'),
+    resetBtn: document.getElementById('resetBtn'),
+    markAllVisibleBtn: document.getElementById('markAllVisibleBtn'),
+    viewAllBtn: document.getElementById('viewAllBtn'),
+    viewAllRow: document.getElementById('viewAllRow'),
+    revViewAllBtn: document.getElementById('revViewAllBtn'),
+  };
+
+  let showAllPrev = false;      // Section 3
+  let showAllSessions = false;  // Section 2
+
+  function render(state){
+    const tISO = todayISO();
+    els.todayStr.textContent = `Today: ${formatHuman(tISO)}`;
+
+    const dnum = dayNumberForDate(state, tISO);
+    els.todayDayNum.textContent = dnum ?? '—';
+    els.todayDateStr.textContent = formatHuman(tISO);
+
+    const todayRec = state.days.find(d=>d.date===tISO);
+    els.todayText.value = todayRec?.text || '';
+    els.autosaveNote.textContent = '';
+
+    els.retentionDays.value = state.retentionDays;
+
+    // ===== Section 2: Revisions =====
+    const allSessionDates = Object.keys(state.sessions).sort((a,b)=> b.localeCompare(a));
+    const filteredDates = showAllSessions ? allSessionDates : allSessionDates.filter(d => !state.sessions[d].done);
+
+    if(els.revViewAllBtn){
+      els.revViewAllBtn.style.display = allSessionDates.length ? '' : 'none';
+      els.revViewAllBtn.textContent = showAllSessions ? 'View less' : 'View all';
+    }
+
+    const revListFrag = document.createElement('div');
+    if(filteredDates.length===0){
+      const p = document.createElement('div'); p.className = 'muted'; p.textContent = 'No revisions due or pending.'; revListFrag.appendChild(p);
+    }
+    for(const sDate of filteredDates){
+      const sess = state.sessions[sDate];
+      const wrap = document.createElement('div'); wrap.className = 'rev-session ' + (sess.done? 'done':'pending');
+      const head = document.createElement('div'); head.className = 'row';
+      const left = document.createElement('div'); left.innerHTML = `<strong>${sDate===tISO? 'Today':'Session'} • ${formatHuman(sDate)}</strong>`; head.appendChild(left);
+      const toggle = document.createElement('button'); toggle.textContent = sess.done ? 'Mark as Not Revised' : 'Mark as Revised'; toggle.className = sess.done ? '' : 'success';
+      toggle.addEventListener('click', ()=>{ sess.done = !sess.done; if(sess.done) sess.doneAt = new Date().toISOString(); else delete sess.doneAt; save(state); render(state); });
+      head.appendChild(toggle); wrap.appendChild(head);
+      const due = document.createElement('div'); due.className = 'due-days';
+      for(const dn of sess.dueDays){ const pill = document.createElement('span'); pill.className='pill'; pill.textContent = `Day ${dn}`; due.appendChild(pill); }
+      wrap.appendChild(due); revListFrag.appendChild(wrap);
+    }
+    els.revList.innerHTML=''; els.revList.appendChild(revListFrag);
+
+    // ===== Section 3: Previous Days (today + previous 14 by default) =====
+    const allSorted = [...state.days].sort((a,b)=> b.date.localeCompare(a.date));
+    const total = allSorted.length;
+    const visible = showAllPrev ? allSorted : allSorted.slice(0,15); // today + 14 previous
+
+    if(els.viewAllRow){ els.viewAllRow.style.display = total>15 ? '' : 'none'; els.viewAllBtn.textContent = showAllPrev ? 'View less' : 'View all'; }
+
+    const tbl = document.createElement('div');
+    for(const d of visible){
+      const row = document.createElement('div'); row.className = 'tr';
+      const dn = dayNumberForDate(state, d.date);
+      const col1 = document.createElement('div'); col1.innerHTML = `<div class="daynum">Day ${dn}</div><div class="small muted">${formatHuman(d.date)}</div>`;
+      const col2 = document.createElement('div'); const ta = document.createElement('textarea'); ta.value = d.text || ''; ta.rows = 3; col2.appendChild(ta);
+      const col3 = document.createElement('div'); const saveBtn = document.createElement('button'); saveBtn.textContent = 'Save'; saveBtn.addEventListener('click', ()=>{ d.text = ta.value.trim(); d.auto = false; save(state); render(state); }); col3.appendChild(saveBtn);
+      row.appendChild(col1); row.appendChild(col2); row.appendChild(col3); tbl.appendChild(row);
+    }
+    els.daysTable.innerHTML=''; els.daysTable.appendChild(tbl);
+  }
+
+  function computeAndRender(){
+    const state = load();
+    ensureDayStubs(state);
+    pruneOld(state);
+    rebuildSessions(state);
+    save(state);
+    render(state);
+  }
+
+  // ====== Events ======
+  function bind(){
+    els.viewAllBtn?.addEventListener('click', ()=>{ showAllPrev = !showAllPrev; render(load()); });
+    els.revViewAllBtn?.addEventListener('click', ()=>{ showAllSessions = !showAllSessions; render(load()); });
+    els.saveTodayBtn.addEventListener('click', ()=>{ const s=load(); const t = todayISO(); const rec = s.days.find(d=>d.date===t); if(rec){ rec.text = els.todayText.value.trim(); rec.auto=false; save(s); render(s);} });
+    document.addEventListener('keydown', (e)=>{ if((e.ctrlKey||e.metaKey) && e.key==='Enter'){ e.preventDefault(); els.saveTodayBtn.click(); } });
+    els.applyRetentionBtn.addEventListener('click', ()=>{ const s=load(); const v=parseInt(els.retentionDays.value,10); if(Number.isFinite(v)&&v>=20&&v<=365){ s.retentionDays=v; pruneOld(s); rebuildSessions(s); save(s); render(s);} });
+    els.resetBtn.addEventListener('click', ()=>{ if(confirm('Reset ALL data? This cannot be undone.')){ localStorage.removeItem(STORE_KEY); computeAndRender(); } });
+    els.markAllVisibleBtn.addEventListener('click', ()=>{ const s=load(); const allDates = Object.keys(s.sessions).sort((a,b)=> b.localeCompare(a)); const targets = showAllSessions? allDates : allDates.filter(d=>!s.sessions[d].done); for(const k of targets){ s.sessions[k].done=true; s.sessions[k].doneAt=new Date().toISOString(); } save(s); render(s); });
+  }
+
+  computeAndRender();
+  bind();
+/* ——— Mobile-only accordions for ".about" → "How it works" & "Why it's effective" ——— */
+function setupAboutAccordions(){
+  const about = document.querySelector('.about');
+  if (!about) return;
+
+  // helper: build one accordion around an <h3> followed by its list
+  function makeAccordion(h3){
+    // avoid double-wrapping if this runs again
+    if (h3.closest('.accordion')) return null;
+
+    const next = h3.nextElementSibling;
+    if (!next || !/^(OL|UL)$/i.test(next.tagName)) return null;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'accordion';
+
+    const head = document.createElement('div');
+    head.className = 'acc-head';
+    head.setAttribute('role','button');
+    head.tabIndex = 0;
+    head.style.cursor = 'pointer'; // minimal inline style so it works without extra CSS
+
+    const body = document.createElement('div');
+    body.className = 'acc-body';
+    body.style.maxHeight = '0px';
+    body.style.overflow = 'hidden';
+    body.style.transition = 'max-height .25s ease';
+    body.style.padding = '0 14px';
+
+    const bodyId = 'acc-' + Math.random().toString(36).slice(2);
+    body.id = bodyId;
+    head.setAttribute('aria-controls', bodyId);
+    head.setAttribute('aria-expanded','false');
+
+    // minimal chevron (inline styles so no CSS required)
+    const chev = document.createElementNS('http://www.w3.org/2000/svg','svg');
+    chev.setAttribute('viewBox','0 0 24 24');
+    chev.setAttribute('aria-hidden','true');
+    chev.style.width = '18px';
+    chev.style.height = '18px';
+    chev.style.marginLeft = '8px';
+    chev.style.opacity = '.85';
+    chev.style.transition = 'transform .2s ease';
+    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d','M6 9l6 6 6-6');
+    path.setAttribute('fill','none');
+    path.setAttribute('stroke','currentColor');
+    path.setAttribute('stroke-width','2');
+    path.setAttribute('stroke-linecap','round');
+    path.setAttribute('stroke-linejoin','round');
+    chev.appendChild(path);
+
+    // assemble
+    const marker = h3; // remember original position
+    wrap.appendChild(head);
+    wrap.appendChild(body);
+    about.insertBefore(wrap, marker); // place wrapper where <h3> was
+    head.appendChild(h3);             // move <h3> into head
+    head.appendChild(chev);
+    body.appendChild(next);           // move list into body
+
+    const mq = window.matchMedia('(max-width: 899px)');
+
+    function setOpen(isOpen){
+      wrap.classList.toggle('open', !!isOpen);
+      head.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      // rotate chevron without needing CSS
+      chev.style.transform = isOpen ? 'rotate(180deg)' : 'rotate(0deg)';
+
+      if (mq.matches) {
+        // mobile: collapse/expand
+        body.style.overflow = 'hidden';
+        if (isOpen) {
+          body.style.maxHeight = body.scrollHeight + 'px';
+          body.style.paddingBottom = '12px';
+        } else {
+          body.style.maxHeight = '0px';
+          body.style.paddingBottom = '0px';
+        }
+      } else {
+        // desktop: always open, no inline constraints
+        body.style.maxHeight = '';
+        body.style.overflow = '';
+        body.style.paddingBottom = '';
+      }
+    }
+
+    function toggle(){ setOpen(!wrap.classList.contains('open')); }
+    head.addEventListener('click', toggle);
+    head.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); toggle(); } });
+
+    mq.addEventListener?.('change', ()=> setOpen(!mq.matches)); // open on desktop, closed on mobile
+    setOpen(!mq.matches); // initial state
+    return wrap;
+  }
+
+  // only target the two specific headings
+  const targets = Array.from(about.querySelectorAll('h3')).filter(h => {
+    const t = (h.textContent || '').trim().toLowerCase();
+    return t === 'how it works' || t === "why it's effective" || t === "why it’s effective";
+  });
+
+  targets.forEach(makeAccordion);
+}
+
+// 👉 run it (keep this single line; no need to move your existing calls)
+setupAboutAccordions();
+
+})();
+</script>
+<script type="module">
+  // ---------- Firebase imports ----------
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-analytics.js";
+  import {
+    getAuth, GoogleAuthProvider,
+    signInWithPopup, signInWithRedirect, getRedirectResult,
+    onAuthStateChanged, signOut
+  } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+  import {
+    getFirestore, doc, setDoc, getDoc, serverTimestamp,
+    enableIndexedDbPersistence
+  } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+
+  // ---------- Your Firebase config ----------
+  const firebaseConfig = {
+    apiKey: "AIzaSyBU_GHott_OO70cfThrppCRGubWSYEmTuc",
+    authDomain: "memorax---study-planner.firebaseapp.com",
+    projectId: "memorax---study-planner",
+    storageBucket: "memorax---study-planner.firebasestorage.app",
+    messagingSenderId: "1029709741736",
+    appId: "1:1029709741736:web:d36995825940d6dc700c9d",
+    measurementId: "G-55S27KXRXM"
+  };
+
+  // ---------- Init ----------
+  const app = initializeApp(firebaseConfig);
+  try { getAnalytics(app); } catch {}
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  enableIndexedDbPersistence(db).catch(() => {}); // offline cache
+  const provider = new GoogleAuthProvider();
+
+  // ---------- Keys used by your app ----------
+  const STORE_KEY = "sr_day_logger_v1";
+  const META_KEY  = "sr_day_logger_meta_v1";
+
+  // ---------- Header buttons (already in your HTML) ----------
+  const loginBtn  = document.getElementById("loginBtn");
+  const logoutBtn = document.getElementById("logoutBtn");
+
+  // ---------- Full-screen "Sign in required" gate (visible by default) ----------
+  const gate = document.createElement("div");
+  gate.id = "authGate";
+  gate.innerHTML = `
+    <div style="text-align:center">
+      <h2>Sign in to use Memorax</h2>
+      <p class="small muted" style="margin:8px 0 16px">Your notes sync privately to your Google account.</p>
+      <button id="gateSignIn" class="primary">Sign in with Google</button>
+    </div>
+  `;
+  Object.assign(gate.style, {
+    position: "fixed",
+    inset: "0",
+    display: "flex",              // visible until we confirm you're signed in
+    alignItems: "center",
+    justifyContent: "center",
+    background: "#fff",           // change color if you want a different gate bg
+    color: "#000",
+    zIndex: "9999",
+    padding: "24px"
+  });
+  document.body.appendChild(gate);
+
+  // ---------- Shared sign-in with popup/redirect + double-click guard ----------
+  let signingIn = false;
+  async function startSignIn() {
+    if (signingIn) return;
+    signingIn = true;
+    try {
+      document.getElementById('gateSignIn')?.setAttribute('disabled','');
+      document.getElementById('loginBtn')?.setAttribute('disabled','');
+
+      const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+      if (isMobile) {
+        await signInWithRedirect(auth, provider);
+        return; // browser navigates; complete on getRedirectResult()
+      } else {
+        try {
+          await signInWithPopup(auth, provider);
+        } catch (e) {
+          if (e?.code === 'auth/popup-blocked' || e?.code === 'auth/operation-not-supported-in-this-environment') {
+            await signInWithRedirect(auth, provider);
+            return;
+          }
+          if (e?.code !== 'auth/cancelled-popup-request') {
+            alert("Sign-in failed: " + (e?.message || e));
+          }
+        }
+      }
+    } finally {
+      signingIn = false;
+      document.getElementById('gateSignIn')?.removeAttribute('disabled');
+      document.getElementById('loginBtn')?.removeAttribute('disabled');
+    }
+  }
+  // If we just returned from redirect, complete silently
+  getRedirectResult(auth).catch(() => {});
+
+  // Wire buttons
+  gate.querySelector("#gateSignIn")?.addEventListener("click", startSignIn);
+  loginBtn?.addEventListener("click", startSignIn);
+  logoutBtn?.addEventListener("click", async () => { await signOut(auth); });
+
+  // ---------- Helpers ----------
+  const dataDoc = (uid) => doc(db, "users", uid, "data", "stateV1");
+
+  async function touchLastSeen(user) {
+    await setDoc(doc(db, "users", user.uid), {
+      email: user.email || null,
+      displayName: user.displayName || null,
+      lastSeen: serverTimestamp(),
+      createdAt: serverTimestamp()
+    }, { merge: true });
+  }
+
+  // Make your loader tolerant (safe defaults)
+  if (typeof window.load === "function") {
+    const originalLoad = window.load;
+    window.load = function () {
+      const s = originalLoad() || {};
+      if (!Array.isArray(s.days)) s.days = [];
+      if (!s.sessions || typeof s.sessions !== "object") s.sessions = {};
+      if (typeof s.retentionDays !== "number" || !Number.isFinite(s.retentionDays)) s.retentionDays = 60;
+      if (!s.originDate) s.originDate = (s.days[0]?.date) || new Date().toISOString().slice(0,10);
+      return s;
+    };
+  }
+
+  // Preserve done/doneAt flags if your app rebuilds sessions
+  if (typeof window.rebuildSessions === "function") {
+    const originalRebuild = window.rebuildSessions;
+    window.rebuildSessions = function (state) {
+      const prev = JSON.parse(JSON.stringify(state.sessions || {}));
+      originalRebuild(state);
+      for (const k in state.sessions) {
+        if (prev[k]?.done) {
+          state.sessions[k].done = true;
+          if (prev[k].doneAt && !state.sessions[k].doneAt) state.sessions[k].doneAt = prev[k].doneAt;
+        }
+      }
+      return state;
+    };
+  }
+
+  // ---------- Cloud sync ----------
+  let saveTimer;
+  function queueCloudSave(state) {
+    const uid = auth.currentUser?.uid;     // capture owner at queue time
+    if (!uid) return;
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => saveCloud(uid, state), 800);
+  }
+
+  async function saveCloud(uid, state) {
+    const slim = {
+      originDate: state.originDate || null,
+      retentionDays: (typeof state.retentionDays === "number" ? state.retentionDays : 60),
+      days: Array.isArray(state.days) ? state.days : [],
+      sessions: (state.sessions && typeof state.sessions === "object") ? state.sessions : {}
+    };
+    await setDoc(dataDoc(uid), {
+      state: slim,
+      meta: { clientUpdatedAt: Date.now(), updatedAt: serverTimestamp(), version: 1 }
+    }, { merge: true });
+  }
+
+  async function firstSync(uid) {
+    const localStr = localStorage.getItem(STORE_KEY);
+    const localMeta = JSON.parse(localStorage.getItem(META_KEY) || '{"updatedAt":0,"lastUid":""}');
+    const localUpdatedAt = Number(localMeta.updatedAt || 0);
+
+    const snap = await getDoc(dataDoc(uid));
+    if (snap.exists()) {
+      const cloud = snap.data();
+      const cloudUpdatedAt = Number(cloud?.meta?.clientUpdatedAt || 0);
+
+      if (cloudUpdatedAt > localUpdatedAt) {
+        // Cloud wins → adopt it locally and reload so your UI renders with cloud state
+        if (cloud.state) {
+          const merged = {
+            originDate: cloud.state.originDate || null,
+            retentionDays: (typeof cloud.state.retentionDays === "number" ? cloud.state.retentionDays : 60),
+            days: Array.isArray(cloud.state.days) ? cloud.state.days : [],
+            sessions: (cloud.state.sessions && typeof cloud.state.sessions === "object") ? cloud.state.sessions : {}
+          };
+          localStorage.setItem(STORE_KEY, JSON.stringify(merged));
+          localStorage.setItem(META_KEY, JSON.stringify({ updatedAt: cloudUpdatedAt, lastUid: uid }));
+          location.reload();
+        }
+        return;
+      }
+      // Local is newer or equal → push it
+      if (localStr) {
+        try { await saveCloud(uid, JSON.parse(localStr)); } catch (e) { console.warn("firstSync push failed", e); }
+      }
+    } else {
+      // No cloud doc yet → seed from local if present
+      if (localStr) {
+        try { await saveCloud(uid, JSON.parse(localStr)); } catch (e) { console.warn("seed failed", e); }
+      }
+    }
+  }
+
+  // ---------- Intercept saves & resets ----------
+  // 1) Block saves when signed out + tag local meta with owner UID + mirror to cloud
+  if (typeof window.save === "function") {
+    const originalSave = window.save;
+    window.save = function (state) {
+      if (!auth.currentUser) { alert("Please sign in to save your data."); return; }
+      return originalSave(state);
+    };
+  }
+
+  const _setItem = localStorage.setItem.bind(localStorage);
+  localStorage.setItem = function (key, value) {
+    _setItem(key, value);
+    if (key === STORE_KEY) {
+      try {
+        const meta = JSON.parse(localStorage.getItem(META_KEY) || "{}");
+        meta.updatedAt = Date.now();
+        if (auth.currentUser?.uid) meta.lastUid = auth.currentUser.uid; // tag owner
+        _setItem(META_KEY, JSON.stringify(meta));
+
+        const state = JSON.parse(value);
+        queueCloudSave(state); // no-op if signed out
+      } catch (e) { console.warn("Cloud sync skipped:", e); }
+    }
+  };
+
+  // 2) Make Reset also clear cloud (and include sessions: {})
+  const _removeItem = localStorage.removeItem.bind(localStorage);
+  localStorage.removeItem = function (key) {
+    _removeItem(key);
+    if (key === STORE_KEY) {
+      _removeItem(META_KEY);
+      if (auth.currentUser) {
+        setDoc(dataDoc(auth.currentUser.uid), {
+          state: { originDate: null, retentionDays: 60, days: [], sessions: {} },
+          meta: { clientUpdatedAt: Date.now(), updatedAt: serverTimestamp(), version: 1 }
+        }, { merge: true });
+      }
+    }
+  };
+
+  // ---------- Auth state: gate + isolation ----------
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      // signed in → show UI, hide gate
+      if (loginBtn) loginBtn.style.display = "none";
+      if (logoutBtn) logoutBtn.style.display = "";
+      gate.style.display = "none";
+
+      await touchLastSeen(user);
+
+      const meta = JSON.parse(localStorage.getItem(META_KEY) || "{}");
+      const prevUid = meta.lastUid;
+
+      if (prevUid && prevUid !== user.uid) {
+        // switched accounts → wipe local and start fresh
+        localStorage.removeItem(STORE_KEY);
+        localStorage.setItem(META_KEY, JSON.stringify({ lastUid: user.uid, updatedAt: 0 }));
+      } else if (!prevUid) {
+        // first ever signed-in run on this device
+        localStorage.setItem(META_KEY, JSON.stringify({ lastUid: user.uid, updatedAt: 0 }));
+      } else {
+        // same user as before → keep updatedAt so we don’t trigger pointless reloads
+        localStorage.setItem(META_KEY, JSON.stringify({ lastUid: user.uid, updatedAt: meta.updatedAt || 0 }));
+      }
+
+      await firstSync(user.uid);  // may reload once if cloud truly wins
+
+    } else {
+      // signed out → hide UI behind gate and clear local
+      if (loginBtn) loginBtn.style.display = "";
+      if (logoutBtn) logoutBtn.style.display = "none";
+      gate.style.display = "flex";
+
+      localStorage.removeItem(STORE_KEY);
+      localStorage.removeItem(META_KEY);
+    }
+  });
+</script>
+
+
+
+
+</body>
+</html>
