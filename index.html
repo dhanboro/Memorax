@@ -587,7 +587,6 @@ setupAboutAccordions();
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
   import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-analytics.js";
   import {
-    // Auth with robust persistence for mobile
     initializeAuth,
     browserPopupRedirectResolver,
     indexedDBLocalPersistence,
@@ -616,20 +615,14 @@ setupAboutAccordions();
   // ---------- Init ----------
   const app = initializeApp(firebaseConfig);
   try { getAnalytics(app); } catch {}
-  // IMPORTANT: initializeAuth with fallback persistence (fixes mobile redirect loops)
+  // Robust persistence chain (helps mobile keep redirect results)
   const auth = initializeAuth(app, {
-    persistence: [
-      indexedDBLocalPersistence,
-      browserLocalPersistence,
-      browserSessionPersistence
-    ],
+    persistence: [indexedDBLocalPersistence, browserLocalPersistence, browserSessionPersistence],
     popupRedirectResolver: browserPopupRedirectResolver
   });
-
   const db = getFirestore(app);
-  enableIndexedDbPersistence(db).catch(() => {}); // offline cache
+  enableIndexedDbPersistence(db).catch(() => {});
   const provider = new GoogleAuthProvider();
-  // Optional: always show account chooser (useful on shared phones)
   provider.setCustomParameters({ prompt: 'select_account' });
 
   // ---------- Keys used by your app ----------
@@ -656,14 +649,14 @@ setupAboutAccordions();
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    background: "rgba(0, 0, 0, 0.9)",
-    color: "#fff",
+    background: "#fff",
+    color: "#000",
     zIndex: "9999",
     padding: "24px"
   });
   document.body.appendChild(gate);
 
-  // ---------- Shared sign-in with popup/redirect + double-click guard ----------
+  // ---------- Shared sign-in (try POPUP first everywhere; fallback to REDIRECT) ----------
   let signingIn = false;
   async function startSignIn() {
     if (signingIn) return;
@@ -672,22 +665,23 @@ setupAboutAccordions();
       document.getElementById('gateSignIn')?.setAttribute('disabled','');
       document.getElementById('loginBtn')?.setAttribute('disabled','');
 
-      const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
-      if (isMobile) {
-        await signInWithRedirect(auth, provider);
-        return; // browser navigates; we finish on getRedirectResult()
-      } else {
-        try {
-          await signInWithPopup(auth, provider);
-        } catch (e) {
-          if (e?.code === 'auth/popup-blocked' || e?.code === 'auth/operation-not-supported-in-this-environment') {
-            await signInWithRedirect(auth, provider);
-            return;
-          }
-          if (e?.code !== 'auth/cancelled-popup-request') {
-            alert("Sign-in failed: " + (e?.message || e));
-          }
+      try {
+        // Try popup on ALL devices (PC & mobile)
+        await signInWithPopup(auth, provider);
+      } catch (e) {
+        // If popup is blocked/unsupported/cancelled, fallback to redirect
+        const code = e?.code || "";
+        const shouldRedirect =
+          code === 'auth/popup-blocked' ||
+          code === 'auth/operation-not-supported-in-this-environment' ||
+          code === 'auth/cancelled-popup-request';
+
+        if (shouldRedirect) {
+          await signInWithRedirect(auth, provider);
+          return; // navigation happens; we complete on getRedirectResult()
         }
+        // Other errors: show message
+        alert("Sign-in failed: " + (e?.message || code || e));
       }
     } finally {
       signingIn = false;
@@ -695,8 +689,7 @@ setupAboutAccordions();
       document.getElementById('loginBtn')?.removeAttribute('disabled');
     }
   }
-
-  // Complete redirect sign-in if we just came back (do this ASAP after init)
+  // Complete redirect sign-in if we just came back
   getRedirectResult(auth).catch(() => {});
 
   // Wire buttons
@@ -883,7 +876,9 @@ setupAboutAccordions();
 </script>
 
 
+
 </body>
 </html>
+
 
 
