@@ -582,291 +582,118 @@ setupAboutAccordions();
 
 })();
 </script>
+<!-- Replace your existing Firebase <script type="module"> with this -->
 <script type="module">
-  // ---------- Firebase imports ----------
+  // --- Firebase core ---
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-analytics.js";
-  import {
-    getAuth, GoogleAuthProvider,
-    signInWithPopup, signInWithRedirect, getRedirectResult,
-    onAuthStateChanged, signOut
-  } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-  import {
-    getFirestore, doc, setDoc, getDoc, serverTimestamp,
-    enableIndexedDbPersistence
-  } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
-  // ---------- Your Firebase config ----------
+  // --- Auth (note: initializeAuth + persistence chain) ---
+  import {
+    initializeAuth,
+    indexedDBLocalPersistence,
+    browserLocalPersistence,
+    browserSessionPersistence,
+    inMemoryPersistence,
+    GoogleAuthProvider,
+    signInWithPopup,
+    signInWithRedirect,
+    getRedirectResult,
+    onAuthStateChanged,
+    signOut
+  } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+
+  // (Optional) Firestore – only if you already use it; otherwise remove this block
+  // import {
+  //   getFirestore,
+  //   enableIndexedDbPersistence
+  // } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+
+  // --- Your existing config (leave as-is) ---
   const firebaseConfig = {
-    apiKey: "AIzaSyBU_GHott_OO70cfThrppCRGubWSYEmTuc",
-    authDomain: "memorax---study-planner.firebaseapp.com",
-    projectId: "memorax---study-planner",
-    storageBucket: "memorax---study-planner.firebasestorage.app",
-    messagingSenderId: "1029709741736",
-    appId: "1:1029709741736:web:d36995825940d6dc700c9d",
-    measurementId: "G-55S27KXRXM"
+    // ... YOUR KEYS HERE (unchanged) ...
   };
 
-  // ---------- Init ----------
+  // --- Init ---
   const app = initializeApp(firebaseConfig);
-  try { getAnalytics(app); } catch {}
-  const auth = getAuth(app);
-  const db = getFirestore(app);
-  enableIndexedDbPersistence(db).catch(() => {}); // offline cache
-  const provider = new GoogleAuthProvider();
 
-  // ---------- Keys used by your app ----------
-  const STORE_KEY = "sr_day_logger_v1";
-  const META_KEY  = "sr_day_logger_meta_v1";
-
-  // ---------- Header buttons (already in your HTML) ----------
-  const loginBtn  = document.getElementById("loginBtn");
-  const logoutBtn = document.getElementById("logoutBtn");
-
-  // ---------- Full-screen "Sign in required" gate (visible by default) ----------
-  const gate = document.createElement("div");
-  gate.id = "authGate";
-  gate.innerHTML = `
-    <div style="text-align:center">
-      <h2>Sign in to use Memorax</h2>
-      <p class="small muted" style="margin:8px 0 16px">Your notes sync privately to your Google account.</p>
-      <button id="gateSignIn" class="primary">Sign in with Google</button>
-    </div>
-  `;
-  Object.assign(gate.style, {
-    position: "fixed",
-    inset: "0",
-    display: "flex",              // visible until we confirm you're signed in
-    alignItems: "center",
-    justifyContent: "center",
-    background: "#fff",           // change color if you want a different gate bg
-    color: "#000",
-    zIndex: "9999",
-    padding: "24px"
+  // ✅ Most important change: robust persistence for mobile
+  const auth = initializeAuth(app, {
+    persistence: [
+      indexedDBLocalPersistence,
+      browserLocalPersistence,
+      browserSessionPersistence,
+      inMemoryPersistence
+    ]
   });
-  document.body.appendChild(gate);
 
-  // ---------- Shared sign-in with popup/redirect + double-click guard ----------
-  let signingIn = false;
+  // If you use Firestore, keep this (otherwise delete):
+  // const db = getFirestore(app);
+  // enableIndexedDbPersistence(db).catch(() => { /* ignore */ });
+
+  const provider = new GoogleAuthProvider();
+  // provider.setCustomParameters({ prompt: "select_account" }); // optional
+
+  // --- UI helpers (update IDs if yours differ) ---
+  const $ = (id) => document.getElementById(id);
+  const gate = $("gate") || $("overlay") || document.querySelector("[data-auth-gate]");
+  const signInBtn = $("gateSignIn") || $("loginBtn") || document.querySelector("[data-sign-in]");
+  const signOutBtn = $("signOut") || document.querySelector("[data-sign-out]");
+
+  function show(el, yes) { if (!el) return; el.style.display = yes ? "" : "none"; }
+  function disable(el, yes) { if (!el) return; yes ? el.setAttribute("disabled","") : el.removeAttribute("disabled"); }
+
+  // --- React to auth state (hide overlay once signed in) ---
+  onAuthStateChanged(auth, (user) => {
+    console.log("AUTH STATE:", user ? user.uid : "signed-out");
+    show(gate, !user);   // hide the blocker when signed in
+    disable(signInBtn, false);
+  });
+
+  // --- Surface redirect outcome (so mobile failures are visible) ---
+  getRedirectResult(auth)
+    .then((res) => {
+      if (res?.user) {
+        console.log("Redirect OK:", res.user.uid);
+      }
+    })
+    .catch((e) => {
+      console.error("Redirect error:", e);
+      alert(`Sign-in failed after redirect:\n${e.code || ""} ${e.message || e}`);
+    });
+
+  // --- Sign-in flow (desktop popup, mobile redirect) ---
   async function startSignIn() {
-    if (signingIn) return;
-    signingIn = true;
     try {
-      document.getElementById('gateSignIn')?.setAttribute('disabled','');
-      document.getElementById('loginBtn')?.setAttribute('disabled','');
-
+      disable(signInBtn, true);
       const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+
       if (isMobile) {
         await signInWithRedirect(auth, provider);
-        return; // browser navigates; complete on getRedirectResult()
+        return; // browser will navigate away
       } else {
         try {
           await signInWithPopup(auth, provider);
         } catch (e) {
-          if (e?.code === 'auth/popup-blocked' || e?.code === 'auth/operation-not-supported-in-this-environment') {
+          // Fallback to redirect if popups are blocked
+          if (e?.code === "auth/popup-blocked" || e?.code === "auth/operation-not-supported-in-this-environment") {
             await signInWithRedirect(auth, provider);
             return;
           }
-          if (e?.code !== 'auth/cancelled-popup-request') {
-            alert("Sign-in failed: " + (e?.message || e));
-          }
+          throw e;
         }
       }
+    } catch (e) {
+      console.error("Sign-in error:", e);
+      alert(`Sign-in failed:\n${e.code || ""} ${e.message || e}`);
     } finally {
-      signingIn = false;
-      document.getElementById('gateSignIn')?.removeAttribute('disabled');
-      document.getElementById('loginBtn')?.removeAttribute('disabled');
-    }
-  }
-  // If we just returned from redirect, complete silently
-  getRedirectResult(auth).catch(() => {});
-
-  // Wire buttons
-  gate.querySelector("#gateSignIn")?.addEventListener("click", startSignIn);
-  loginBtn?.addEventListener("click", startSignIn);
-  logoutBtn?.addEventListener("click", async () => { await signOut(auth); });
-
-  // ---------- Helpers ----------
-  const dataDoc = (uid) => doc(db, "users", uid, "data", "stateV1");
-
-  async function touchLastSeen(user) {
-    await setDoc(doc(db, "users", user.uid), {
-      email: user.email || null,
-      displayName: user.displayName || null,
-      lastSeen: serverTimestamp(),
-      createdAt: serverTimestamp()
-    }, { merge: true });
-  }
-
-  // Make your loader tolerant (safe defaults)
-  if (typeof window.load === "function") {
-    const originalLoad = window.load;
-    window.load = function () {
-      const s = originalLoad() || {};
-      if (!Array.isArray(s.days)) s.days = [];
-      if (!s.sessions || typeof s.sessions !== "object") s.sessions = {};
-      if (typeof s.retentionDays !== "number" || !Number.isFinite(s.retentionDays)) s.retentionDays = 60;
-      if (!s.originDate) s.originDate = (s.days[0]?.date) || new Date().toISOString().slice(0,10);
-      return s;
-    };
-  }
-
-  // Preserve done/doneAt flags if your app rebuilds sessions
-  if (typeof window.rebuildSessions === "function") {
-    const originalRebuild = window.rebuildSessions;
-    window.rebuildSessions = function (state) {
-      const prev = JSON.parse(JSON.stringify(state.sessions || {}));
-      originalRebuild(state);
-      for (const k in state.sessions) {
-        if (prev[k]?.done) {
-          state.sessions[k].done = true;
-          if (prev[k].doneAt && !state.sessions[k].doneAt) state.sessions[k].doneAt = prev[k].doneAt;
-        }
-      }
-      return state;
-    };
-  }
-
-  // ---------- Cloud sync ----------
-  let saveTimer;
-  function queueCloudSave(state) {
-    const uid = auth.currentUser?.uid;     // capture owner at queue time
-    if (!uid) return;
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => saveCloud(uid, state), 800);
-  }
-
-  async function saveCloud(uid, state) {
-    const slim = {
-      originDate: state.originDate || null,
-      retentionDays: (typeof state.retentionDays === "number" ? state.retentionDays : 60),
-      days: Array.isArray(state.days) ? state.days : [],
-      sessions: (state.sessions && typeof state.sessions === "object") ? state.sessions : {}
-    };
-    await setDoc(dataDoc(uid), {
-      state: slim,
-      meta: { clientUpdatedAt: Date.now(), updatedAt: serverTimestamp(), version: 1 }
-    }, { merge: true });
-  }
-
-  async function firstSync(uid) {
-    const localStr = localStorage.getItem(STORE_KEY);
-    const localMeta = JSON.parse(localStorage.getItem(META_KEY) || '{"updatedAt":0,"lastUid":""}');
-    const localUpdatedAt = Number(localMeta.updatedAt || 0);
-
-    const snap = await getDoc(dataDoc(uid));
-    if (snap.exists()) {
-      const cloud = snap.data();
-      const cloudUpdatedAt = Number(cloud?.meta?.clientUpdatedAt || 0);
-
-      if (cloudUpdatedAt > localUpdatedAt) {
-        // Cloud wins → adopt it locally and reload so your UI renders with cloud state
-        if (cloud.state) {
-          const merged = {
-            originDate: cloud.state.originDate || null,
-            retentionDays: (typeof cloud.state.retentionDays === "number" ? cloud.state.retentionDays : 60),
-            days: Array.isArray(cloud.state.days) ? cloud.state.days : [],
-            sessions: (cloud.state.sessions && typeof cloud.state.sessions === "object") ? cloud.state.sessions : {}
-          };
-          localStorage.setItem(STORE_KEY, JSON.stringify(merged));
-          localStorage.setItem(META_KEY, JSON.stringify({ updatedAt: cloudUpdatedAt, lastUid: uid }));
-          location.reload();
-        }
-        return;
-      }
-      // Local is newer or equal → push it
-      if (localStr) {
-        try { await saveCloud(uid, JSON.parse(localStr)); } catch (e) { console.warn("firstSync push failed", e); }
-      }
-    } else {
-      // No cloud doc yet → seed from local if present
-      if (localStr) {
-        try { await saveCloud(uid, JSON.parse(localStr)); } catch (e) { console.warn("seed failed", e); }
-      }
+      disable(signInBtn, false);
     }
   }
 
-  // ---------- Intercept saves & resets ----------
-  // 1) Block saves when signed out + tag local meta with owner UID + mirror to cloud
-  if (typeof window.save === "function") {
-    const originalSave = window.save;
-    window.save = function (state) {
-      if (!auth.currentUser) { alert("Please sign in to save your data."); return; }
-      return originalSave(state);
-    };
-  }
-
-  const _setItem = localStorage.setItem.bind(localStorage);
-  localStorage.setItem = function (key, value) {
-    _setItem(key, value);
-    if (key === STORE_KEY) {
-      try {
-        const meta = JSON.parse(localStorage.getItem(META_KEY) || "{}");
-        meta.updatedAt = Date.now();
-        if (auth.currentUser?.uid) meta.lastUid = auth.currentUser.uid; // tag owner
-        _setItem(META_KEY, JSON.stringify(meta));
-
-        const state = JSON.parse(value);
-        queueCloudSave(state); // no-op if signed out
-      } catch (e) { console.warn("Cloud sync skipped:", e); }
-    }
-  };
-
-  // 2) Make Reset also clear cloud (and include sessions: {})
-  const _removeItem = localStorage.removeItem.bind(localStorage);
-  localStorage.removeItem = function (key) {
-    _removeItem(key);
-    if (key === STORE_KEY) {
-      _removeItem(META_KEY);
-      if (auth.currentUser) {
-        setDoc(dataDoc(auth.currentUser.uid), {
-          state: { originDate: null, retentionDays: 60, days: [], sessions: {} },
-          meta: { clientUpdatedAt: Date.now(), updatedAt: serverTimestamp(), version: 1 }
-        }, { merge: true });
-      }
-    }
-  };
-
-  // ---------- Auth state: gate + isolation ----------
-  onAuthStateChanged(auth, async (user) => {
-    if (user) {
-      // signed in → show UI, hide gate
-      if (loginBtn) loginBtn.style.display = "none";
-      if (logoutBtn) logoutBtn.style.display = "";
-      gate.style.display = "none";
-
-      await touchLastSeen(user);
-
-      const meta = JSON.parse(localStorage.getItem(META_KEY) || "{}");
-      const prevUid = meta.lastUid;
-
-      if (prevUid && prevUid !== user.uid) {
-        // switched accounts → wipe local and start fresh
-        localStorage.removeItem(STORE_KEY);
-        localStorage.setItem(META_KEY, JSON.stringify({ lastUid: user.uid, updatedAt: 0 }));
-      } else if (!prevUid) {
-        // first ever signed-in run on this device
-        localStorage.setItem(META_KEY, JSON.stringify({ lastUid: user.uid, updatedAt: 0 }));
-      } else {
-        // same user as before → keep updatedAt so we don’t trigger pointless reloads
-        localStorage.setItem(META_KEY, JSON.stringify({ lastUid: user.uid, updatedAt: meta.updatedAt || 0 }));
-      }
-
-      await firstSync(user.uid);  // may reload once if cloud truly wins
-
-    } else {
-      // signed out → hide UI behind gate and clear local
-      if (loginBtn) loginBtn.style.display = "";
-      if (logoutBtn) logoutBtn.style.display = "none";
-      gate.style.display = "flex";
-
-      localStorage.removeItem(STORE_KEY);
-      localStorage.removeItem(META_KEY);
-    }
-  });
+  // --- Wire up buttons ---
+  if (signInBtn) signInBtn.addEventListener("click", startSignIn);
+  if (signOutBtn)  signOutBtn.addEventListener("click", () => signOut(auth));
 </script>
-
-
 
 
 </body>
