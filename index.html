@@ -174,14 +174,6 @@ header .header-right {
 }
 button {border-radius: 30px;}
 	  /* Desktop: swap 1st and 2nd cards, keep 2-per-row */
-@media (min-width: 900px) {
-  /* Move "Today’s Record" (1st card) to the right half */
-  .cards .card:nth-of-type(1) { grid-column: 7 / span 6; }
-
-  /* Move "Due Revisions" (2nd card) to the left half */
-  .cards .card:nth-of-type(2) { grid-column: 1 / span 6; }
-}
-
 
   </style>
 </head>
@@ -211,19 +203,7 @@ button {border-radius: 30px;}
 
 
     <div class="cards">
-      <section class="card span6">
-        <header><h2>Today’s Record</h2></header>
-        <div class="body">
-          <div class="row small muted">Day <span id="todayDayNum">—</span> • <span id="todayDateStr">—</span></div>
-          <div class="spacer"></div>
-          <textarea id="todayText" placeholder="What did you study today? (free text, multiple chapters allowed)"></textarea>
-          <div class="spacer"></div>
-          <div class="row">
-            <button class="primary" id="saveTodayBtn">Save Today’s Record</button>
-            <span class="right small muted" id="autosaveNote"></span>
-          </div>
-        </div>
-      </section>
+      
 
       <section class="card span6">
         <header><h2>Due Revisions</h2></header>
@@ -234,6 +214,19 @@ button {border-radius: 30px;}
           <div class="row">
             <button class="success" id="markAllVisibleBtn">Mark All Visible Sessions as Revised</button>
             <button id="revViewAllBtn">View all</button>
+          </div>
+        </div>
+      </section>
+		<section class="card span6">
+        <header><h2>Today’s Record</h2></header>
+        <div class="body">
+          <div class="row small muted">Day <span id="todayDayNum">—</span> • <span id="todayDateStr">—</span></div>
+          <div class="spacer"></div>
+          <textarea id="todayText" placeholder="What did you study today? (free text, multiple chapters allowed)"></textarea>
+          <div class="spacer"></div>
+          <div class="row">
+            <button class="primary" id="saveTodayBtn">Save Today’s Record</button>
+            <span class="right small muted" id="autosaveNote"></span>
           </div>
         </div>
       </section>
@@ -950,6 +943,7 @@ if (btnParent) {
 
 </body>
 </html>
+
 
 
 
