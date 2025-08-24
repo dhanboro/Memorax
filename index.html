@@ -165,6 +165,10 @@ header .header-right {
 }
 button {border-radius: 30px;}
 	  /* Desktop: swap 1st and 2nd cards, keep 2-per-row */
+/* Kill top padding only for the first child in Due Revisions */
+.card header + .body .helper-inline:first-child {
+  margin-top: -6px; /* pull it up a bit */
+}
 
   </style>
 </head>
@@ -936,6 +940,7 @@ if (btnParent) {
 
 </body>
 </html>
+
 
 
 
